@@ -1,0 +1,75 @@
+---
+import Icon from './Icon.astro';
+import { book, sections } from '../config';
+import { url } from '../lib/url';
+const { page } = Astro.props as { page: string };
+const links = [
+  { href: url(''), label: 'The book', key: 'book' },
+  sections.timeline && { href: url('timeline/'), label: 'Our firsts', key: 'timeline' },
+  sections.map && { href: url('map/'), label: "Places we've been", key: 'map' },
+  sections.gallery && { href: url('gallery/'), label: 'All our photos', key: 'gallery' },
+].filter(Boolean) as { href: string; label: string; key: string }[];
+---
+<header class="toolbar" aria-label="Reading controls">
+  {page === 'book' ? <span></span> : <a class="brand" href={url('')}>{book.title}</a>}
+  <div class="tools">
+    {page === 'book' && (
+      <>
+        <button class="icon-btn" id="tb-contents" type="button" aria-label="Table of contents" title="Contents" hidden><Icon name="list" /></button>
+        <button class="icon-btn" id="tb-view" type="button" aria-label="Switch to scroll reading" title="Switch reading view" hidden><Icon name="scroll" /></button>
+        <button class="icon-btn" id="tb-sound" type="button" aria-pressed="false" aria-label="Page-turn sound" title="Page-turn sound" hidden><Icon name="sound" /></button>
+      </>
+    )}
+    <button class="icon-btn" id="tb-theme" type="button" aria-pressed="false" aria-label="Night reading" title="Night reading">
+      <span class="i-moon"><Icon name="moon" /></span><span class="i-sun" hidden><Icon name="sun" /></span>
+    </button>
+    {links.length > 1 && (
+      <nav class="menu" aria-label="Sections">
+        <button class="icon-btn" id="tb-menu" type="button" aria-expanded="false" aria-controls="menu-list" aria-label="More pages" title="More pages"><Icon name="menu" /></button>
+        <ul class="menu-list paper" id="menu-list" hidden>
+          {links.map((l) => (
+            <li><a href={l.href} aria-current={l.key === page ? 'page' : undefined}>{l.label}</a></li>
+          ))}
+        </ul>
+      </nav>
+    )}
+  </div>
+</header>
+
+<script>
+  const root = document.documentElement;
+  const themeBtn = document.getElementById('tb-theme')!;
+  const sync = () => {
+    const night = root.dataset.theme === 'night';
+    themeBtn.setAttribute('aria-pressed', String(night));
+    themeBtn.querySelector('.i-moon')!.toggleAttribute('hidden', night);
+    themeBtn.querySelector('.i-sun')!.toggleAttribute('hidden', !night);
+  };
+  sync();
+  themeBtn.addEventListener('click', () => {
+    root.dataset.theme = root.dataset.theme === 'night' ? 'paper' : 'night';
+    try { localStorage.setItem('pou:theme', root.dataset.theme); } catch {}
+    sync();
+  });
+
+  // tuck the toolbar away while reading down the page, bring it back when scrolling up
+  const bar = document.querySelector<HTMLElement>('.toolbar')!;
+  let lastY = scrollY;
+  addEventListener('scroll', () => {
+    const y = scrollY;
+    if (Math.abs(y - lastY) < 8) return;
+    const hide = y > lastY && y > 120 && !bar.contains(document.activeElement);
+    bar.classList.toggle('tb-hidden', hide);
+    lastY = y;
+  }, { passive: true });
+  bar.addEventListener('focusin', () => bar.classList.remove('tb-hidden'));
+
+  const menuBtn = document.getElementById('tb-menu');
+  const list = document.getElementById('menu-list');
+  if (menuBtn && list) {
+    const set = (open: boolean) => { list.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open)); };
+    menuBtn.addEventListener('click', (e) => { e.stopPropagation(); set(list.hidden); if (!list.hidden) list.querySelector('a')?.focus(); });
+    document.addEventListener('click', (e) => { if (!list.contains(e.target as Node)) set(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !list.hidden) { set(false); menuBtn.focus(); } });
+  }
+</script>

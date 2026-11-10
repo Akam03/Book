@@ -1,0 +1,9 @@
+# Optional: alt text (a short description for screen readers) and captions
+# for photos in the gallery, keyed by file name in /photos.
+# Photos without an entry still show up in the gallery.
+placeholder-01.jpg:
+  alt: Placeholder photo
+  caption: where it all began
+placeholder-03.jpg:
+  alt: Placeholder photo from our first date
+  caption: 21 · 05 · 2026

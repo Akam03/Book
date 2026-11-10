@@ -1,0 +1,3 @@
+# This is a private book. Please don't read over our shoulder.
+User-agent: *
+Disallow: /

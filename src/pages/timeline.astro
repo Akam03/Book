@@ -1,0 +1,68 @@
+---
+import { getCollection } from 'astro:content';
+import { Picture } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import Ornament from '../components/Ornament.astro';
+import { sections, book } from '../config';
+import { formatDate, dayNumber } from '../lib/dates';
+
+const firsts = (await getCollection('firsts')).sort((a, b) => a.data.date.getTime() - b.data.date.getTime());
+if (!sections.timeline) return Astro.redirect('/');
+---
+<Base page="timeline" title="Our firsts">
+  <div class="sheet-wrap">
+    <div class="sheet paper">
+      <header class="sheet-head">
+        <p class="chapter-label">Tucked in the back</p>
+        <h1>Our firsts</h1>
+        <Ornament />
+        <p>Every “first” that became a little piece of us.</p>
+      </header>
+      <ol class="timeline">
+        {firsts.map(({ data }, i) => {
+          const day = dayNumber(data.date, book.togetherSince);
+          return (
+            <li class={`tl-item ${i % 2 ? 'tl-r' : 'tl-l'}`}>
+              <span class="tl-dot" aria-hidden="true"></span>
+              <div class="tl-card">
+                <p class="tl-date hand"><time datetime={data.date.toISOString().slice(0, 10)}>{formatDate(data.date)}</time>{day && <span class="tl-day"> · day {day}</span>}</p>
+                <h2 class="tl-title">{data.title}</h2>
+                {data.note && <p class="tl-note">{data.note}</p>}
+                {data.photo && (
+                  <figure class={`polaroid ${i % 2 ? 'tilt-r' : 'tilt-l'}`}>
+                    <button type="button" class="photo-open" aria-label={`Open photo: ${data.photoAlt || data.title}`}>
+                      <Picture src={data.photo} formats={['avif', 'webp']} alt={data.photoAlt || ''} widths={[320, 640, 1200]} sizes="(min-width: 800px) 300px, 70vw" />
+                    </button>
+                  </figure>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+      <p class="fleuron" aria-hidden="true">❦ ❦ ❦</p>
+      <p style="text-align:center;font-style:italic;color:var(--ink-soft)">…and all the firsts still to come.</p>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .timeline { list-style: none; margin: 0 auto; padding: 0; position: relative; max-width: 48rem; --photo-max: 260px; }
+  .timeline::before { content: ''; position: absolute; top: .5rem; bottom: .5rem; left: 11px; width: 2px; background: linear-gradient(var(--rose-wash), var(--rose), var(--rose-wash)); }
+  .tl-item { position: relative; padding: 0 0 2.2rem 2.6rem; }
+  .tl-dot { position: absolute; left: 4px; top: .55rem; width: 16px; height: 16px; border-radius: 50%; background: var(--paper); border: 2px solid var(--rose-ink); box-shadow: 0 0 0 4px var(--paper); }
+  .tl-date { margin: 0; font-size: 1.4rem; color: var(--rose-ink); line-height: 1.2; }
+  .tl-day { font-size: .85em; opacity: .8; }
+  .tl-title { margin: .1em 0 .2em; font-family: var(--display); font-style: italic; font-weight: 400; font-size: 1.55rem; line-height: 1.2; }
+  .tl-note { margin: 0; color: var(--ink-soft); }
+  .tl-card .polaroid { margin: 1.2rem 0 .4rem; }
+  @media (min-width: 800px) {
+    .timeline::before { left: 50%; transform: translateX(-1px); }
+    .tl-item { width: 50%; padding: 0 2.6rem 2.6rem 0; text-align: right; }
+    .tl-item.tl-r { margin-left: 50%; padding: 0 0 2.6rem 2.6rem; text-align: left; }
+    .tl-item .tl-dot { left: auto; right: -9px; }
+    .tl-item.tl-r .tl-dot { right: auto; left: -9px; }
+    .tl-l .polaroid { margin-left: auto; }
+    .tl-item + .tl-item { margin-top: -1.2rem; }
+  }
+</style>

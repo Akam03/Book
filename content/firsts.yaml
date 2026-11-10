@@ -1,0 +1,26 @@
+# Our "firsts". Add as many as you like, in any order (they're sorted by date).
+# photo is optional, e.g.  photo: ../photos/my-photo.jpg
+- date: 2026-03-01
+  title: First hello
+  note: The message that started everything.
+- date: 2026-03-02
+  title: First late-night conversation
+  note: "\"Okay, goodnight\" … two more hours."
+- date: 2026-03-20
+  title: First phone call
+  note: "Placeholder: replace with your real firsts."
+- date: 2026-05-21
+  title: First official date
+  note: The day we became us. (Day 1.)
+  photo: ../photos/placeholder-03.jpg
+  photoAlt: Placeholder for a photo from our first date
+- date: 2026-06-10
+  title: First photo together
+  photo: ../photos/placeholder-05.jpg
+  photoAlt: Placeholder for our first photo together
+- date: 2026-07-04
+  title: First "Jind"
+  note: When the nicknames got serious.
+- date: 2026-08-15
+  title: First trip together
+  note: Placeholder.

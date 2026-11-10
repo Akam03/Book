@@ -1,0 +1,22 @@
+# Places we've been. Find coordinates by right-clicking a spot on
+# https://www.openstreetmap.org and choosing "Show address".
+# These pins are PLACEHOLDERS: replace them with your own places.
+- name: Where we first met (placeholder)
+  lat: 30.7333
+  lng: 76.7794
+  date: 2026-03-01
+  note: Replace with the real place.
+- name: Our first date (placeholder)
+  lat: 30.7046
+  lng: 76.7179
+  date: 2026-05-21
+  note: Day 1.
+- name: The café we keep going back to (placeholder)
+  lat: 30.7525
+  lng: 76.8101
+  date: 2026-06-15
+- name: Our first trip (placeholder)
+  lat: 31.1048
+  lng: 77.1734
+  date: 2026-08-15
+  note: Mountains, cold air, warm chai.

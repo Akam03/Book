@@ -1,0 +1,181 @@
+---
+import { getCollection, getEntry, render } from 'astro:content';
+import { Picture } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import Ornament from '../components/Ornament.astro';
+import Icon from '../components/Icon.astro';
+import { book, sections, reading } from '../config';
+import { url } from '../lib/url';
+import { chapterWord, formatDate, dayNumber } from '../lib/dates';
+import '../styles/book.css';
+
+const chapters = (await getCollection('chapters', (c) => !c.data.draft)).sort((a, b) => a.data.order - b.data.order);
+const rendered = await Promise.all(chapters.map(async (c) => ({ entry: c, ...(await render(c)) })));
+
+const dedication = await getEntry('pages', 'dedication');
+const letter = await getEntry('pages', 'closing-letter');
+const Dedication = dedication ? (await render(dedication)).Content : null;
+const Letter = letter ? (await render(letter)).Content : null;
+
+const extras = [
+  sections.timeline && { href: url('timeline/'), label: 'Our firsts', note: 'a timeline' },
+  sections.map && { href: url('map/'), label: "Places we've been", note: 'a map' },
+  sections.gallery && { href: url('gallery/'), label: 'All our photos', note: 'the gallery' },
+].filter(Boolean) as { href: string; label: string; note: string }[];
+---
+<Base page="book">
+  <!-- ───────── Cover ───────── -->
+  <section class="cover-stage" id="cover-stage" aria-label="Book cover">
+    <div class="cover-3d">
+      <div class="cover-pages" aria-hidden="true"></div>
+      <div class="cover-book" id="cover-book">
+        <div class="cover-front">
+          <div class="cover-frame">
+            <p class="cover-kicker small-caps">{book.subtitle.split('·')[0].trim()}</p>
+            <h1 class="cover-title">{book.title}</h1>
+            <Ornament class="cover-orn" />
+            <p class="cover-sub">{book.subtitle.split('·').slice(1).join('·').trim() || book.subtitle}</p>
+            <p class="cover-names">{book.names[0]} <span class="amp">&amp;</span> {book.names[1]}</p>
+            <p class="cover-note">{book.coverNote}</p>
+          </div>
+        </div>
+        <div class="cover-inside paper" aria-hidden="true"></div>
+      </div>
+    </div>
+    <div class="cover-actions">
+      <button class="btn btn-solid" id="open-book" type="button" data-autofocus>
+        <Icon name="book" /> Open the book
+      </button>
+      <button class="btn" id="continue-reading" type="button" hidden>
+        Continue reading<span class="continue-where"></span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ───────── Reader ───────── -->
+  <section class="reader" id="reader" data-sound-default={reading.soundOnByDefault ? 'on' : 'off'} aria-label={`${book.title}, the book`} hidden>
+    <div class="flip-stage" id="flip-stage" hidden>
+      <div class="flip-host-wrap" id="flip-host-wrap"></div>
+      <nav class="flip-nav" aria-label="Turn pages">
+        <button class="icon-btn" id="flip-prev" type="button" aria-label="Previous page"><Icon name="left" /></button>
+        <p class="flip-status" id="flip-status" aria-live="polite"></p>
+        <button class="icon-btn" id="flip-next" type="button" aria-label="Next page"><Icon name="right" /></button>
+      </nav>
+      <p class="flip-help">Use ← → keys, click a page, or drag a corner to turn</p>
+    </div>
+
+    <article class="scroll-book paper" id="book-source">
+      <section class="bk bk-title" data-kind="title" aria-label="Title page">
+        <p class="small-caps tp-kicker">{book.subtitle.split('·')[0].trim()}</p>
+        <h2 class="tp-title">{book.title}</h2>
+        <Ornament />
+        <p class="tp-sub">{book.subtitle.split('·').slice(1).join('·').trim()}</p>
+        <p class="tp-by">written for <span class="hand">{book.names[0]}</span><br />by <span class="hand">{book.author}</span></p>
+      </section>
+
+      {Dedication && (
+        <section class="bk bk-dedication" data-kind="dedication" aria-label="Dedication">
+          {dedication?.data.title && <h2 class="sr-only">{dedication.data.title}</h2>}
+          <div class="dedication-text"><Dedication /></div>
+          <Ornament />
+        </section>
+      )}
+
+      <section class="bk bk-toc" id="contents" data-kind="toc" aria-labelledby="toc-title">
+        <h2 id="toc-title" class="toc-title">Contents</h2>
+        <ol class="toc">
+          {rendered.map(({ entry }, i) => (
+            <li>
+              <a href={`#ch-${entry.id}`} data-goto={`ch-${entry.id}`}>
+                <span class="toc-num">{chapterWord(i + 1)}</span>
+                <span class="toc-name">{entry.data.title}</span>
+                <span class="toc-dots" aria-hidden="true"></span>
+                <span class="toc-page" data-page-for={`ch-${entry.id}`}></span>
+              </a>
+            </li>
+          ))}
+          {Letter && (
+            <li class="toc-letter">
+              <a href="#letter" data-goto="letter">
+                <span class="toc-num">❦</span><span class="toc-name">{letter?.data.title || 'A letter'}</span>
+                <span class="toc-dots" aria-hidden="true"></span><span class="toc-page" data-page-for="letter"></span>
+              </a>
+            </li>
+          )}
+        </ol>
+        {extras.length > 0 && (
+          <>
+            <p class="toc-extras-title small-caps">Tucked in the back</p>
+            <ul class="toc-extras">
+              {extras.map((x) => <li><a href={x.href}>{x.label}</a> <span class="toc-note">· {x.note}</span></li>)}
+            </ul>
+          </>
+        )}
+      </section>
+
+      {rendered.map(({ entry, Content }, i) => {
+        const d = entry.data;
+        const day = dayNumber(d.date, book.togetherSince);
+        return (
+          <section class="bk chapter" data-kind="chapter" id={`ch-${entry.id}`} data-title={d.title} aria-labelledby={`h-${entry.id}`}>
+            <header class="chapter-opener" data-opener>
+              <p class="chapter-label">Chapter {chapterWord(i + 1)}</p>
+              <h2 class="chapter-title" id={`h-${entry.id}`}>{d.title}</h2>
+              {d.subtitle && <p class="chapter-sub">{d.subtitle}</p>}
+              <p class="chapter-date">
+                <time datetime={d.date.toISOString().slice(0, 10)}>{formatDate(d.date)}</time>
+                {day && <span class="chapter-day"> · Day {day}</span>}
+              </p>
+              {d.cover && (
+                <figure class={`polaroid opener-photo ${i % 2 ? 'tilt-r' : 'tilt-l'}`}>
+                  <button type="button" class="photo-open" aria-label={`Open photo: ${d.coverAlt || d.title}`}>
+                    <Picture src={d.cover} formats={['avif', 'webp']} alt={d.coverAlt || ''} widths={[360, 640, 1000, 1600]} sizes="(min-width: 960px) 360px, 80vw" loading={i === 0 ? 'eager' : 'lazy'} />
+                  </button>
+                  {d.coverCaption && <figcaption>{d.coverCaption}</figcaption>}
+                </figure>
+              )}
+              {d.epigraph && (
+                <blockquote class="epigraph">
+                  <p>{d.epigraph}</p>
+                  {d.epigraphSource && <footer>— {d.epigraphSource}</footer>}
+                </blockquote>
+              )}
+            </header>
+            <div class="prose chapter-body" data-flow>
+              <Content />
+            </div>
+          </section>
+        );
+      })}
+
+      {Letter && (
+        <section class="bk bk-letter" data-kind="letter" id="letter" data-title={letter?.data.title || 'A letter'} aria-labelledby="letter-title">
+          <div class="prose letter-body" data-flow>
+            <h2 class="letter-title" id="letter-title">{letter?.data.title || 'A letter'}</h2>
+            <Letter />
+            {letter?.data.signoff && <p class="signoff">{letter.data.signoff}</p>}
+          </div>
+        </section>
+      )}
+
+      <section class="bk bk-end" data-kind="end" aria-label="The end, for now">
+        <Ornament />
+        <p class="tbc">{book.toBeContinued}</p>
+        <p class="tbc-note">{book.nextVolumeNote}</p>
+        <Ornament />
+        <p class="tbc-actions">
+          <button class="btn" type="button" data-restart>Back to the beginning</button>
+        </p>
+        {extras.length > 0 && (
+          <p class="tbc-extras">
+            {extras.map((x, j) => <>{j > 0 && ' · '}<a href={x.href}>{x.label}</a></>)}
+          </p>
+        )}
+      </section>
+    </article>
+  </section>
+
+  <script>
+    import '../scripts/book';
+  </script>
+</Base>

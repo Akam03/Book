@@ -1,0 +1,65 @@
+---
+import { gate } from '../config';
+import { passwordHash } from '../lib/sha256';
+import Ornament from './Ornament.astro';
+const hash = passwordHash(gate.answer);
+---
+{gate.enabled && (
+  <div class="gate" id="gate" data-hash={hash} data-remember={String(gate.rememberDevice)} data-hint={gate.hint}>
+    <div class="diary" id="diary" role="dialog" aria-modal="true" aria-labelledby="gate-title" aria-describedby="gate-desc">
+      <div class="diary-strap" aria-hidden="true"><div class="diary-clasp"><span></span></div></div>
+      <p class="small-caps" style="letter-spacing:.3em;font-size:.85rem;opacity:.85">Private</p>
+      <h1 id="gate-title">A diary for Cheena</h1>
+      <Ornament />
+      <p id="gate-desc">This book is locked. Only one person knows the answer.</p>
+      <form id="gate-form" autocomplete="off">
+        <label for="gate-input">{gate.question}</label>
+        <input id="gate-input" name="answer" type="password" autocapitalize="none" spellcheck="false" required aria-describedby="gate-hint" />
+        <button class="btn" type="submit">Unlock</button>
+        <p class="gate-hint" id="gate-hint" aria-live="polite"></p>
+      </form>
+    </div>
+  </div>
+)}
+
+<script>
+  import { passwordHash } from '../lib/sha256';
+  const gateEl = document.getElementById('gate');
+  const form = document.getElementById('gate-form') as HTMLFormElement | null;
+  const input = document.getElementById('gate-input') as HTMLInputElement | null;
+  const hint = document.getElementById('gate-hint');
+  const diary = document.getElementById('diary');
+  const root = document.documentElement;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (gateEl && root.classList.contains('locked')) {
+    gateEl.querySelector('input')?.focus();
+  }
+
+  let tries = 0;
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!gateEl || !input || !diary || !hint) return;
+    const h = passwordHash(input.value);
+    if (h === gateEl.dataset.hash) {
+      try {
+        (gateEl.dataset.remember === 'true' ? localStorage : sessionStorage).setItem('pou:key', h);
+      } catch {}
+      hint.textContent = 'Welcome back, my love ♡';
+      diary.classList.add('opening');
+      setTimeout(() => {
+        root.classList.remove('locked');
+        document.dispatchEvent(new CustomEvent('pou:unlocked'));
+        (document.querySelector('[data-autofocus]') as HTMLElement | null)?.focus();
+      }, reduce ? 0 : 750);
+    } else {
+      const lines = ['Not quite, my love. Try again ♡', 'Hmm, think back to that evening…', 'Close your eyes. Where were we?'];
+      tries++;
+      hint.textContent = tries >= 2 && gateEl.dataset.hint ? `Hint: ${gateEl.dataset.hint}` : lines[Math.floor(Math.random() * lines.length)];
+      diary.classList.remove('shake');
+      void diary.offsetWidth;
+      diary.classList.add('shake');
+      input.select();
+    }
+  });
+</script>

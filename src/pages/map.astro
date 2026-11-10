@@ -1,0 +1,98 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Ornament from '../components/Ornament.astro';
+import { formatDate } from '../lib/dates';
+import 'leaflet/dist/leaflet.css';
+
+const places = (await getCollection('places'))
+  .map((p) => p.data)
+  .sort((a, b) => (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0));
+const data = places.map((p) => ({ ...p, date: p.date ? formatDate(p.date) : '' }));
+---
+<Base page="map" title="Places we've been">
+  <div class="sheet-wrap">
+    <div class="sheet paper">
+      <header class="sheet-head">
+        <p class="chapter-label">Tucked in the back</p>
+        <h1>Places we've been</h1>
+        <Ornament />
+        <p>Every pin is a memory.</p>
+      </header>
+      <div class="map-frame">
+        <div id="love-map" class="love-map" data-places={JSON.stringify(data)} role="region" aria-label="Map of places we've been"></div>
+      </div>
+      <ol class="place-list">
+        {data.map((p, i) => (
+          <li>
+            <button type="button" class="place-btn" data-index={i}>
+              <span class="place-n" aria-hidden="true">{i + 1}</span>
+              <span>
+                <span class="place-name">{p.name}</span>
+                {p.date && <span class="place-date hand">{p.date}</span>}
+                {p.note && <span class="place-note">{p.note}</span>}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import L from 'leaflet';
+  const el = document.getElementById('love-map')!;
+  type Place = { name: string; lat: number; lng: number; date?: string; note?: string };
+  const places: Place[] = JSON.parse(el.dataset.places || '[]');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const map = L.map(el, { scrollWheelZoom: false, zoomControl: true });
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+  const icon = (n: number) => L.divIcon({
+    className: 'heart-pin',
+    html: `<span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-8-5-8-11.2A4.6 4.6 0 0 1 12 6.6a4.6 4.6 0 0 1 8 3.2C20 16 12 21 12 21z"/></svg><b>${n}</b></span>`,
+    iconSize: [34, 34], iconAnchor: [17, 30], popupAnchor: [0, -26],
+  });
+  const esc = (s = '') => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const markers = places.map((p, i) =>
+    L.marker([p.lat, p.lng], { icon: icon(i + 1), title: p.name, alt: p.name, keyboard: true })
+      .addTo(map)
+      .bindPopup(`<strong>${esc(p.name)}</strong>${p.date ? `<br><span class="hand">${esc(p.date)}</span>` : ''}${p.note ? `<br>${esc(p.note)}` : ''}`),
+  );
+  if (places.length > 1) {
+    L.polyline(places.map((p) => [p.lat, p.lng] as [number, number]), { color: '#8a4652', weight: 2, dashArray: '4 8', opacity: .7 }).addTo(map);
+    map.fitBounds(L.latLngBounds(places.map((p) => [p.lat, p.lng] as [number, number])), { padding: [40, 40] });
+  } else if (places.length === 1) map.setView([places[0].lat, places[0].lng], 13);
+  else map.setView([20, 0], 2);
+  el.addEventListener('click', () => map.scrollWheelZoom.enable(), { once: true });
+  document.querySelectorAll<HTMLButtonElement>('.place-btn').forEach((b) =>
+    b.addEventListener('click', () => {
+      const i = Number(b.dataset.index);
+      map.flyTo(markers[i].getLatLng(), 14, { animate: !reduce, duration: 1.2 });
+      markers[i].openPopup();
+      el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+    }),
+  );
+</script>
+
+<style is:global>
+  .map-frame { padding: 10px; background: var(--polaroid); box-shadow: var(--shadow); transform: rotate(-.4deg); }
+  .love-map { height: min(62vh, 520px); min-height: 320px; background: var(--paper-2); }
+  :root[data-theme='night'] .love-map .leaflet-tile-pane { filter: brightness(.75) sepia(.35) contrast(1.05); }
+  .heart-pin span { position: relative; display: block; width: 34px; height: 34px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.3)); }
+  .heart-pin svg { width: 34px; height: 34px; fill: #b0606d; stroke: #fff; stroke-width: 1.5; }
+  .heart-pin b { position: absolute; inset: 0; display: grid; place-items: center; padding-bottom: 4px; color: #fff; font: 600 12px/1 var(--serif); }
+  .leaflet-container { font-family: var(--serif); font-size: 1rem; }
+  .leaflet-popup-content { font-size: 1.05rem; line-height: 1.4; }
+  .leaflet-popup-content .hand { font-size: 1.25em; color: #8a4652; }
+  .place-list { list-style: none; margin: 2rem 0 0; padding: 0; display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+  .place-btn { display: flex; gap: .8rem; align-items: flex-start; width: 100%; padding: .7rem .8rem; text-align: left; background: transparent; border: 1px solid color-mix(in srgb, var(--rose) 40%, transparent); border-radius: 10px; cursor: pointer; }
+  .place-btn:hover { background: var(--rose-wash); }
+  .place-n { flex: none; display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--rose-ink); color: var(--paper); font-size: .9rem; }
+  .place-name { display: block; font-weight: 600; }
+  .place-date { display: block; color: var(--rose-ink); font-size: 1.2rem; line-height: 1.2; }
+  .place-note { display: block; color: var(--ink-soft); font-style: italic; font-size: .95rem; }
+</style>

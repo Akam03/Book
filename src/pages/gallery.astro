@@ -1,0 +1,51 @@
+---
+import { getCollection } from 'astro:content';
+import { Picture } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import Base from '../layouts/Base.astro';
+import Ornament from '../components/Ornament.astro';
+
+// Every photo in /photos shows up here automatically.
+const files = import.meta.glob<{ default: ImageMetadata }>('/photos/**/*.{jpg,jpeg,png,webp,avif,JPG,JPEG,PNG,WEBP}', { eager: true });
+const info = new Map((await getCollection('gallery')).map((e) => [e.id, e.data]));
+const photos = Object.entries(files)
+  .map(([path, mod]) => {
+    const name = path.split('/').pop()!;
+    const meta = info.get(name) || {};
+    const pretty = name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
+    return { name, img: mod.default, alt: meta.alt || `Photo: ${pretty}`, caption: meta.caption };
+  })
+  .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+---
+<Base page="gallery" title="All our photos">
+  <div class="sheet-wrap">
+    <div class="sheet paper">
+      <header class="sheet-head">
+        <p class="chapter-label">Tucked in the back</p>
+        <h1>All our photos</h1>
+        <Ornament />
+        <p>{photos.length} little moments. Tap one to see it bigger.</p>
+      </header>
+      <ul class="gallery">
+        {photos.map((p, i) => (
+          <li>
+            <figure class={`polaroid ${i % 2 ? 'tilt-r' : 'tilt-l'}`}>
+              <button type="button" class="photo-open" aria-label={`Open photo: ${p.alt}`}>
+                <Picture src={p.img} formats={['avif', 'webp']} alt={p.alt} widths={[320, 640, 1600]} sizes="(min-width: 900px) 280px, (min-width: 560px) 45vw, 90vw" loading="lazy" />
+              </button>
+              {p.caption && <figcaption>{p.caption}</figcaption>}
+            </figure>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .gallery { list-style: none; margin: 0; padding: 0; columns: 3 15rem; column-gap: 1.8rem; --photo-max: none; }
+  .gallery li { break-inside: avoid; padding: .9rem 0; }
+  .gallery .polaroid { margin: 0 auto; }
+  .gallery .polaroid img { width: 100%; }
+  .gallery .polaroid:nth-child(3n) { --tilt: .6deg; }
+</style>
